@@ -150,7 +150,7 @@ class EcoConnectApp {
         try {
             const newEvent = database.createEvent(eventData);
             this.events = database.getEvents();
-            
+            this.eventsManager.events = this.events;
             ModalManager.closeModal('createEventModal');
             this.showNotification('Мероприятие успешно создано!', 'success');
             
@@ -704,4 +704,5 @@ class ModalManager {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new EcoConnectApp();
+
 });
