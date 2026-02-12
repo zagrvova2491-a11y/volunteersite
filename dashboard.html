@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Connect - Личный кабинет</title>
+    
+    <style>
+        :root {
+            --dark-green: #1b5e20;
+            --medium-green: #2e7d32;
+            --light-green: #4caf50;
+            --accent-green: #388e3c;
+            --background-image: url('https://media.istockphoto.com/id/598520904/photo/green-forest-foliage-aerial-view-woodland-tree-canopy-nature-background.jpg?s=612x612&w=0&k=20&c=RcCcRuTBBqnaZ_58Q1o9NGNUxRg-tlPzK_jTjpPIpM4=');
+        }
+    </style>
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=#YOUR_GOOGLE_MAPS_API_KEY#&libraries=places&callback=Function.prototype"></script>
+    
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="styles/map.css">
+    <link rel="stylesheet" href="styles/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        .task-progress-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .task-name {
+            font-weight: 500;
+            color: white;
+        }
+        
+        .task-target {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+        
+        .progress-bar-container {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-bar-fill {
+            background: linear-gradient(90deg, var(--light-green), var(--accent-green));
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 5px;
+        }
+        
+        .progress-text {
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        
+        .task-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .task-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            color: white;
+        }
+        
+        .task-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+        
+        .my-events-section {
+            margin-top: 3rem;
+        }
+        
+        .chat-btn {
+            background: linear-gradient(135deg, #0088cc, #00a8e8);
+            margin-left: 10px;
+        }
+        
+        .chat-btn:hover {
+            background: linear-gradient(135deg, #0077b3, #0096cc);
+        }
+        
+        .task-editor-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .task-editor-item input {
+            flex: 1;
+        }
+        
+        .task-editor-item .task-target-input {
+            width: 80px;
+        }
+        
+        .task-editor-item .task-unit-input {
+            width: 60px;
+        }
+        
+        .add-task-btn {
+            margin-top: 10px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- GPS Permission Modal -->
+    <div id="gpsModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="gps-content">
+                <div class="gps-icon">
+                    <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <h3>Разрешите доступ к геолокации</h3>
+                <p>Для подбора ближайших мероприятий и расчета расстояний нам нужно знать ваше местоположение. Без этого будет использоваться город по умолчанию (Новосибирск).</p>
+                <div class="gps-buttons">
+                    <button class="btn btn-secondary" id="denyGpsBtn" type="button">
+                        <i class="fas fa-times"></i>
+                        Использовать город
+                    </button>
+                    <button class="btn btn-primary" id="allowGpsBtn" type="button">
+                        <i class="fas fa-check"></i>
+                        Разрешить GPS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Required Modal -->
+    <div id="loginRequiredModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="login-required-content">
+                <div class="login-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3>Требуется авторизация</h3>
+                <p>Для записи на мероприятие необходимо войти в систему или зарегистрироваться.</p>
+                <div class="login-buttons">
+                    <button class="btn btn-secondary" onclick="ModalManager.closeModal('loginRequiredModal')">
+                        Отмена
+                    </button>
+                    <a href="login.html" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Войти
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <i class="fas fa-leaf"></i>
+                    Eco-Connect
+                </a>
+                <nav class="nav">
+                    <a href="#dashboard" class="nav-link">Главная</a>
+                    <a href="#events" class="nav-link">Мероприятия</a>
+                    <a href="#map" class="nav-link">Карта</a>
+                    <a href="#my-events" class="nav-link" id="myEventsLink" style="display:none;">Мои мероприятия</a>
+                </nav>
+                <div class="user-menu-container" id="userMenuContainer">
+                    <button class="btn btn-primary" id="loginBtn" style="display: flex;">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Войти
+                    </button>
+                    
+                    <button class="user-menu-btn" id="userMenuBtn" style="display: none;">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="userName">Аккаунт</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-info">
+                            <div class="user-avatar" id="userAvatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="user-details">
+                                <div class="user-fullname" id="userFullName"></div>
+                                <div class="user-email" id="userEmail"></div>
+                                <div class="user-role" id="userRole"></div>
+                            </div>
+                        </div>
+                        <div class="user-stats">
+                            <div class="stat-item" id="statItem1">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Участвовал в <strong id="participatedCount">0</strong> мероприятиях</span>
+                            </div>
+                            <div class="stat-item" id="statItem2">
+                                <i class="fas fa-users"></i>
+                                <span>В системе <strong id="daysInSystem">0</strong> дней</span>
+                            </div>
+                            <div class="stat-item" id="curatorStats" style="display: none;">
+                                <i class="fas fa-calendar-plus"></i>
+                                <span>Создал <strong id="createdEventsCount">0</strong> мероприятий</span>
+                            </div>
+                        </div>
+                        <div class="dropdown-actions">
+                            <button class="dropdown-item" id="profileBtn">
+                                <i class="fas fa-user-edit"></i>
+                                Профиль
+                            </button>
+                            <button class="dropdown-item" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                Выйти
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- Дашборд с выбором действий -->
+        <section id="dashboard" class="section">
+            <div class="container">
+                <h2 class="section-title" id="welcomeTitle">Добро пожаловать!</h2>
+                <p class="section-subtitle" id="welcomeSubtitle">Найдите ближайшие экологические мероприятия и присоединяйтесь к сообществу</p>
+                <div class="dashboard-grid">
+                    <div class="action-card" id="chooseEventCard">
+                        <div class="action-card-bg"></div>
+                        <div class="action-card-content">
+                            <h3><i class="fas fa-list-alt"></i> Выбрать мероприятие</h3>
+                            <p>Просмотрите все доступные мероприятия, отсортированные по расстоянию от вас</p>
+                            <button class="btn btn-primary action-btn" id="chooseEventBtn">
+                                Смотреть мероприятия
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="action-card" id="quickJoinCard">
+                        <div class="action-card-bg"></div>
+                        <div class="action-card-content">
+                            <h3><i class="fas fa-bolt"></i> Ближайшее мероприятие</h3>
+                            <p>Автоматический подбор ближайшего мероприятия по вашему местоположению</p>
+                            <button class="btn btn-primary action-btn" id="quickJoinBtn">
+                                Найти ближайшее
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="action-card" id="createEventDashboardCard" style="display: none;">
+                        <div class="action-card-bg"></div>
+                        <div class="action-card-content">
+                            <h3><i class="fas fa-calendar-plus"></i> Создать мероприятие</h3>
+                            <p>Организуйте новое волонтерское мероприятие, приглашайте участников</p>
+                            <button class="btn btn-primary action-btn" id="createEventBtn">
+                                Создать мероприятие
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Список мероприятий -->
+        <section id="events" class="section" style="display: none;">
+            <div class="container">
+                <div class="events-header">
+                    <h2 class="section-title">Доступные мероприятия</h2>
+                    <div class="events-controls">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="eventSearch" placeholder="Поиск мероприятий...">
+                        </div>
+                        <select id="sortEvents" class="form-select">
+                            <option value="distance">По расстоянию</option>
+                            <option value="date-asc">По дате (ближайшие)</option>
+                            <option value="date-desc">По дате (поздние)</option>
+                        </select>
+                        <button class="btn btn-secondary" id="backToDashboardBtn">
+                            <i class="fas fa-arrow-left"></i> Назад
+                        </button>
+                    </div>
+                </div>
+                <div class="events-grid" id="eventsContainer">
+                    <!-- Мероприятия добавляются через JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Мои мероприятия -->
+        <section id="my-events" class="section my-events-section" style="display: none;">
+            <div class="container">
+                <h2 class="section-title">Мои мероприятия</h2>
+                <p class="section-subtitle">Отслеживайте прогресс выполнения задач</p>
+                <div class="events-grid" id="myEventsContainer">
+                    <!-- Мои мероприятия добавляются через JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Карта -->
+        <section id="map" class="section section-map">
+            <div class="container">
+                <h2 class="section-title">Карта мероприятий</h2>
+                <div class="map-container">
+                    <div id="mainMap"></div>
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <span class="legend-marker" style="background: #4caf50;"></span>
+                            <span>Доступные мероприятия</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker" style="background: #ff9800;"></span>
+                            <span>Заполнены</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker" style="background: #f44336; border-radius: 50%;"></span>
+                            <span>Ваше местоположение</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Eco-Connect. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <!-- Модальное окно создания мероприятия -->
+    <div id="createEventModal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close" id="closeCreateModal">&times;</span>
+            <h3><i class="fas fa-calendar-plus"></i> Создать мероприятие</h3>               
+            <form id="createEventForm" class="create-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventTitle">Название мероприятия *</label>
+                        <input type="text" id="eventTitle" required placeholder="Например: Уборка парка">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDate">Дата *</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventTime">Время</label>
+                        <input type="time" id="eventTime">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventMaxVolunteers">Максимум участников *</label>
+                        <input type="number" id="eventMaxVolunteers" required min="1" max="1000" value="50">
+                    </div>
+                </div>
+
+                <!-- Таск-лист для мероприятия -->
+                <div class="form-group">
+                    <label>Задачи мероприятия (с количественными целями)</label>
+                    <div id="taskListEditor">
+                        <div id="tasksContainer">
+                            <!-- Задачи добавляются здесь -->
+                        </div>
+                        <button type="button" class="btn btn-secondary add-task-btn" id="addTaskBtn">
+                            <i class="fas fa-plus"></i> Добавить задачу
+                        </button>
+                    </div>
+                    <div class="input-hint">Например: "Собрать мусор" - цель 100 кг, "Посадить деревья" - цель 20 шт</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Местоположение *</label>
+                    <div class="location-input-group" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="eventAddress" placeholder="Введите адрес (например: Первомайский сквер, Новосибирск)" style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" id="searchAddressBtn">
+                            <i class="fas fa-search"></i> Найти
+                        </button>
+                    </div>
+                    <div id="locationMap" class="map-preview-large" style="height: 300px; border-radius: 12px; margin-top: 10px;"></div>
+                    <div class="input-hint">Кликните на карте чтобы уточнить место, или введите адрес и нажмите "Найти"</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventChatLink">Ссылка на групповой чат (Telegram/WhatsApp)</label>
+                    <input type="url" id="eventChatLink" placeholder="https://t.me/+... или https://chat.whatsapp.com/...">
+                </div>
+
+                <div class="form-group">
+                    <label for="eventDescription">Описание</label>
+                    <textarea id="eventDescription" rows="3" placeholder="Опишите мероприятие..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Теги</label>
+                    <div class="tags-selector">
+                        <label class="tag-option">
+                            <input type="checkbox" name="tags" value="мусор">
+                            <span class="tag-badge">♻️ Мусор</span>
+                        </label>
+                        <label class="tag-option">
+                            <input type="checkbox" name="tags" value="листья">
+                            <span class="tag-badge">🍂 Листья</span>
+                        </label>
+                        <label class="tag-option">
+                            <input type="checkbox" name="tags" value="озеленение">
+                            <span class="tag-badge">🌳 Озеленение</span>
+                        </label>
+                        <label class="tag-option">
+                            <input type="checkbox" name="tags" value="озера">
+                            <span class="tag-badge">💧 Озера</span>
+                        </label>
+                        <label class="tag-option">
+                            <input type="checkbox" name="tags" value="парки">
+                            <span class="tag-badge">🌲 Парки</span>
+                        </label>
+                        <label class="tag-option">
+                            <input type="checkbox" name="tags" value="реки">
+                            <span class="tag-badge">🌊 Реки</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelCreate">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать мероприятие</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно участников -->
+    <div id="participantsModal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close" id="closeParticipantsModal">&times;</span>
+            <div class="participants-header">
+                <div class="participants-info">
+                    <h3><i class="fas fa-users"></i> Участники мероприятия</h3>
+                    <p id="participantsEventTitle"></p>
+                </div>
+                <div class="participants-controls">
+                    <input type="text" id="searchParticipant" class="search-input" placeholder="Поиск участника...">
+                    <button class="btn btn-primary" id="exportParticipantsBtn">
+                        <i class="fas fa-download"></i> Скачать список
+                    </button>
+                </div>
+            </div>
+            <div class="participants-table-container">
+                <table class="participants-table">
+                    <thead>
+                        <tr>
+                            <th>Фамилия</th>
+                            <th>Имя</th>
+                            <th>Отчество</th>
+                            <th>Телефон</th>
+                            <th>Email</th>
+                            <th>Дата записи</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно успешной записи -->
+    <div id="successModal" class="modal">
+        <div class="modal-content success-modal">
+            <span class="close" id="closeSuccessModal">&times;</span>
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3>Вы успешно записались!</h3>
+            <div class="event-details">
+                <div class="detail-item">
+                    <i class="fas fa-calendar"></i>
+                    <div>
+                        <div class="detail-label">Дата</div>
+                        <div class="detail-value" id="successDate"></div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <div class="detail-label">Время</div>
+                        <div class="detail-value" id="successTime"></div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <div class="detail-label">Место</div>
+                        <div class="detail-value" id="successLocation"></div>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-user"></i>
+                    <div>
+                        <div class="detail-label">Участник</div>
+                        <div class="detail-value" id="successUserName"></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="closeSuccessBtn">Отлично!</button>
+        </div>
+    </div>
+
+    <!-- Уведомления -->
+    <div id="notification" class="notification"></div>
+
+    <!-- JavaScript -->
+    <script src="scripts/database.js"></script>
+    <script src="scripts/map.js"></script>
+    <script src="scripts/events.js"></script>
+    <script src="scripts/algorithm.js"></script>
+    <script src="scripts/dashboard.js"></script>
+    <script src="scripts/main.js"></script>
+</body>
+</html>
